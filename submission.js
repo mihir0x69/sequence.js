@@ -92,15 +92,26 @@ const bot = (function() {
       // This card is either dead or Jack, try another card
       if (position == null) {
         // handle dead card or jack
+        // TODO: Draw one more card from deck
         continue;
       }
-      
+
       return {
         type: MoveType.PLACE_CHIP,
         card: card,
         position: position
       };
     }
+  }
+
+  // position shape - { row: number, col: number }
+  // sPosition - position of card in hand
+  // tPosition - position on the board where we want to place the chip
+  function canPlaceChip(sPosition, tPosition, slot, card) {
+    const isMatchingPosition = sPosition.row === tPosition.row && sPosition.col === tPosition.col
+    const isMatchingCard = slot.card.suit === card.suit && slot.card.rank === card.rank
+    const hasChip = !!slot.chip
+    return isMatchingCard && isMatchingPosition && !hasChip
   }
 
   const positionsAdjacentToCorner = {
@@ -110,33 +121,23 @@ const bot = (function() {
       [8, 0], [8, 1], [8, 8], [8, 9],
       [9, 1], [9 ,8]
     ],
-    has: function (position) {
+    has: function (sPosition, slot, card) {
       return this.positions.reduce(function(acc, curr) {
-        if (acc || (curr[0] === position[0] && curr[1] === position[1])) {
-          return true
-        }
-        return acc
+        const tPosition = { row: curr[0], col: curr[1] }
+        return acc || canPlaceChip(sPosition, tPosition, slot, card)
       }, false)
     }
   }
 
   function findCardPosition(boardSlots, card, yourChipColor) {
-
-    function getPosition(row, col) {
-      return { row: row, col: col }
-    }
-
     for (let row = 0; row < boardSlots.length; row++) {
       const slotsRow = boardSlots[row];
       for (let col = 0; col < slotsRow.length; col++) {
         const slot = slotsRow[col];
+        const position = { row: row, col: col }
         // This slot is one of four corners, ignore
         if (slot.isCorner) {
           continue;
-        }
-
-        if (slot.chip !== null && positionsAdjacentToCorner.has([row, col])) {
-          return getPosition(row, col)
         }
 
         // This slot is a chip and this chip is part of a sequence
@@ -144,19 +145,24 @@ const bot = (function() {
           // do something
         }
 
+        if (slot.chip !== null && positionsAdjacentToCorner.has(position, slot, card)) {
+          console.log('Corner position hogged!', position)
+          return position
+        }
+
         // This is opponent's chip
         if (slot.chip != null && slot.chip.color !== yourChipColor) {
-          // do something          
+          // do something
         }
 
         // match card suit and rank
         if (
-          slot.chip == null &&  // There is not chip in this slot
+          slot.chip == null && // There is not chip in this slot
           slot.card != null &&
           slot.card.suit === card.suit &&
           slot.card.rank === card.rank
         ) {
-          return getPosition(row, col)
+          return position
         }
       }
     }
