@@ -29,6 +29,13 @@ const bot = (function() {
     KING: 13
   });
 
+  const Sequence = Object.freeze({
+    ONE: 1,
+    TWO: 2,
+    THREE: 3,
+    FOUR: 4
+  })
+
   /*
   Arguments:
   1. boardSlots: 2 dimensional array where each element represents slot on the board
@@ -104,6 +111,91 @@ const bot = (function() {
     }
   }
 
+  function buildPotentialSequences(boardSlots) {
+    const SEQUENCE_LENGTH = 5
+    let SEQUENCES = {}
+
+    function addToSequence(sequenceId, position, slot) {
+      const key = position.join('_')
+      SEQUENCES = {
+        ...SEQUENCES,
+        [key]: {
+          ...SEQUENCES[key],
+          [sequenceId]: (SEQUENCES[key] && SEQUENCES[key][sequenceId] || []).concat([{
+            position: position,
+            slot: slot
+          }])
+        }
+      }
+      // const sourceObj = SEQUENCES[key] || {}
+      // SEQUENCES[key] = Object.assign(sourceObj, {
+      //   [sequenceId]: (sourceObj[sequenceId] || []).concat([{
+      //     position: position,
+      //     slot: slot
+      //   }])
+      // })
+    }
+
+    for (let i = 0; i < boardSlots.length; i++) {
+      const row = boardSlots[i]
+      for (let j = 0; j < row.length; j++) {
+        const column = row[j]
+        if (!column.chip) {
+          continue;
+        }
+        for (let k = 1; k <= SEQUENCE_LENGTH; k++) {
+          const previousRow = i - k;
+          const nextRow = i + k;
+          const previousColumn = j - k;
+          const nextColumn = j + k;
+
+          if (boardSlots[previousRow]) {
+            // console.log(Sequence.ONE)
+            addToSequence(Sequence.ONE, [previousRow, j], boardSlots[previousRow][j])
+          }
+
+          if (boardSlots[previousRow] && boardSlots[previousRow][nextColumn]) {
+            // console.log(Sequence.TWO)
+            addToSequence(Sequence.TWO, [previousRow, nextColumn], boardSlots[previousRow][nextColumn])
+          }
+
+          if (boardSlots[i] && boardSlots[i][nextColumn]) {
+            // console.log(Sequence.THREE)
+            addToSequence(Sequence.THREE, [i, nextColumn], boardSlots[i][nextColumn])
+          }
+
+          if (boardSlots[nextRow] && boardSlots[nextRow][nextColumn]) {
+            // console.log(Sequence.FOUR)
+            addToSequence(Sequence.FOUR, [nextRow, nextColumn], boardSlots[nextRow][nextColumn])
+          }
+
+          if (boardSlots[nextRow]) {
+            // console.log(Sequence.ONE)
+            // console.log([nextRow, j])
+            addToSequence(Sequence.ONE, [nextRow, j], boardSlots[nextRow][j])
+          }
+
+          if (boardSlots[nextRow] && boardSlots[nextRow][previousColumn]) {
+            // console.log(Sequence.TWO)
+            addToSequence(Sequence.TWO, [nextRow, previousColumn], boardSlots[nextRow][previousColumn])
+          }
+
+          if (boardSlots[i] && boardSlots[i][previousColumn]) {
+            // console.log(Sequence.THREE)
+            addToSequence(Sequence.THREE, [i, previousColumn], boardSlots[i][previousColumn])
+          }
+
+          if (boardSlots[previousRow] && boardSlots[previousRow][previousColumn]) {
+            // console.log(Sequence.FOUR)
+            addToSequence(Sequence.FOUR, [previousRow, previousColumn], boardSlots[previousRow][previousColumn])
+          }
+        }
+      }
+    }
+    console.log(SEQUENCES)
+    return SEQUENCES
+  }
+
   // position shape - { row: number, col: number }
   // sPosition - position of card in hand
   // tPosition - position on the board where we want to place the chip
@@ -129,7 +221,10 @@ const bot = (function() {
     }
   }
 
+  let count = 0
+
   function findCardPosition(boardSlots, card, yourChipColor) {
+    buildPotentialSequences(boardSlots)
     for (let row = 0; row < boardSlots.length; row++) {
       const slotsRow = boardSlots[row];
       for (let col = 0; col < slotsRow.length; col++) {
